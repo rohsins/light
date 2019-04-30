@@ -1,0 +1,5 @@
+{
+    "files.associations": {
+        "ws2812_control.h": "c"
+    }
+}

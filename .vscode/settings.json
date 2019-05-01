@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "ws2812_control.h": "c"
+        "ws2812_control.h": "c",
+        "xiosbase": "cpp",
+        "system_error": "cpp",
+        "exception": "cpp"
     }
 }

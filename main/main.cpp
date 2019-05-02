@@ -44,8 +44,6 @@ void setColor(uint32_t color, uint32_t intensity) {
 }
 
 void subListener(esp_mqtt_event_handle_t event) {
-    char * dataStream = (char *)calloc(event->data_len, sizeof(char *));
-    memcpy(dataStream, event->data, event->data_len);
 
     struct json_token publisherudi = { NULL, 0, JSON_TYPE_INVALID };
     struct json_token payloadType = { NULL, 0, JSON_TYPE_INVALID };
@@ -55,33 +53,28 @@ void subListener(esp_mqtt_event_handle_t event) {
     int isChecked = 0;
     int intensity = 0;
 
-    if (dataStream != NULL) {
+    // PacketLength = strlen(PacketFormat) + strlen(deviceUdi) + strlen(devicePayloadType) + 512;
+    // char* ComposedPacket = (char*)calloc(PacketLength, sizeof(char *));
+    // int ComposedPacketLength = 0;
 
-        // PacketLength = strlen(PacketFormat) + strlen(deviceUdi) + strlen(devicePayloadType) + 512;
-        // char* ComposedPacket = (char*)calloc(PacketLength, sizeof(char *));
-        // int ComposedPacketLength = 0;
+    json_scanf(event->data, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
+    json_scanf(payload.ptr, payload.len, "{ thingCode: %d, isChecked: %B, intensity: %d, color: %T}", &thingCode, &isChecked, &intensity, &color);
 
-        json_scanf(dataStream, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
-        json_scanf(payload.ptr, payload.len, "{ thingCode: %d, isChecked: %B, intensity: %d, color: %T}", &thingCode, &isChecked, &intensity, &color);
-
-        if (thingCode == 12001) {
-            int colorNumber = (int)strtol(color.ptr + 3, NULL, 16);
-            if (isChecked) {
-                setColor(colorNumber, intensity);
-            } else {
-                setColor(0x00, 0x00);
-            }
-            // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
-            // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %.*s\n", thingCode, isChecked, intensity, color.len, color.ptr);
+    if (thingCode == 12001) {
+        int colorNumber = (int)strtol(color.ptr + 3, NULL, 16);
+        if (isChecked) {
+            setColor(colorNumber, intensity);
+        } else {
+            setColor(0x00, 0x00);
         }
-
-        // ComposedPacketLength = snprintf(ComposedPacket, PacketLength, PacketFormat, deviceUdi, devicePayloadType, deviceThingCode, output);
-        // mqttInstance->Publish("RTSR&D/baanvak/sub/lightSwitch00001", ComposedPacket, ComposedPacketLength, 2, 0);
-
-        // free(ComposedPacket);
-        
-        free(dataStream);
+        // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
+        // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %.*s\n", thingCode, isChecked, intensity, color.len, color.ptr);
     }
+
+    // ComposedPacketLength = snprintf(ComposedPacket, PacketLength, PacketFormat, deviceUdi, devicePayloadType, deviceThingCode, output);
+    // mqttInstance->Publish("RTSR&D/baanvak/sub/lightSwitch00001", ComposedPacket, ComposedPacketLength, 2, 0);
+
+    // free(ComposedPacket);
 }
 
 void mqttTask(void *) {

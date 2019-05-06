@@ -4,5 +4,6 @@
         "xiosbase": "cpp",
         "system_error": "cpp",
         "exception": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

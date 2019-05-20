@@ -94,8 +94,9 @@ void subListener(esp_mqtt_event_handle_t event) {
     json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %B, intensity: %d, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
 
     if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0)) {
-        int colorNumber = (int)strtol(color.ptr + 3, NULL, 16);
+        // int colorNumber = (int)strtol(color.ptr + 3, NULL, 16);
         if (!timer) {
+            int colorNumber = (int)strtol(color.ptr + 3, NULL, 16);
             if (isChecked) {
                 setColor(colorNumber, intensity);
             } else {

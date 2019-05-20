@@ -29,6 +29,19 @@ static const uint16_t deviceThingCode = 13001;
 static char deviceAlias[32];
 static char deviceColor[9];
 
+static struct json_token publisherudi = { NULL, 0, JSON_TYPE_INVALID };
+static struct json_token payloadType = { NULL, 0, JSON_TYPE_INVALID };
+static struct json_token payload = { NULL, 0, JSON_TYPE_INVALID };
+static struct json_token message = { NULL, 0, JSON_TYPE_INVALID };
+static struct json_token details = { NULL, 0, JSON_TYPE_INVALID };
+static struct json_token color = { NULL, 0, JSON_TYPE_INVALID };
+static int thingCode = 0;
+static int isChecked = 0;
+static int intensity = 0;
+static int doorSensor = 0;
+static int motionSensor = 0;
+static int value = 0;
+
 static Mqtt* mqttInstance = new Mqtt();
 
 static char* PacketFormat = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,alias:\"%s\",isChecked:%B,intensity:%d,color:\"%.*s\"}}}";
@@ -44,20 +57,29 @@ void setColor(uint32_t color, uint32_t intensity) {
     ws2812_write_leds(led_color);
 }
 
+static int timer = 0;
+void timeTrigger(void *) {
+    if (timer == 0) {
+        timer = 20;
+        int colorNumber = (int)strtol("F0F0F0", NULL, 16);
+        setColor(colorNumber, 200);
+        while (timer !=0) {
+            printf("waiting for timeout: %d\n", timer);
+            vTaskDelay(1000);
+            timer--;
+        }
+        if (isChecked) {
+            colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+            setColor(colorNumber, intensity);
+        } else {
+            setColor(0x00, 0x00);
+        }
+    }
+    vTaskSuspend(NULL);
+}
+
 void subListener(esp_mqtt_event_handle_t event) {
 
-    static struct json_token publisherudi = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token payloadType = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token payload = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token message = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token details = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token color = { NULL, 0, JSON_TYPE_INVALID };
-    static int thingCode = 0;
-    static int isChecked = 0;
-    static int intensity = 0;
-    static int doorSensor = 0;
-    static int motionSensor = 0;
-    static int value = 0;
     static bool entered = false;
 
     json_scanf(event->data, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
@@ -73,10 +95,12 @@ void subListener(esp_mqtt_event_handle_t event) {
 
     if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0)) {
         int colorNumber = (int)strtol(color.ptr + 3, NULL, 16);
-        if (isChecked) {
-            setColor(colorNumber, intensity);
-        } else {
-            setColor(0x00, 0x00);
+        if (!timer) {
+            if (isChecked) {
+                setColor(colorNumber, intensity);
+            } else {
+                setColor(0x00, 0x00);
+            }
         }
         // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
         // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %.*s\n", thingCode, isChecked, intensity, color.len, color.ptr);
@@ -114,13 +138,19 @@ void subListener(esp_mqtt_event_handle_t event) {
     if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0) {
         json_scanf(details.ptr, details.len, "{ motionSensor: %d, doorSensor: %d, value: %d }", &motionSensor, &doorSensor, &value);
         if ((value == 1 || motionSensor == 1 || doorSensor == 1) && (intensity < 201 || !isChecked)) {
-            int colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-            setColor(colorNumber, 200);
-            vTaskDelay(10000);
-            if (isChecked) {
-                setColor(colorNumber, intensity);
+            // int colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+            // setColor(colorNumber, 200);
+            // vTaskDelay(10000);
+            // if (isChecked) {
+            //     setColor(colorNumber, intensity);
+            // } else {
+            //     setColor(0x00, 0x00);
+            // }
+            if (!timer) {
+                // timeTrigger();
+                xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, (void *)1, 1, NULL);
             } else {
-                setColor(0x00, 0x00);
+                timer = 20;
             }
         }
         if ((strncmp(message.ptr, "Motion Detected!", message.len) == 0
@@ -128,13 +158,19 @@ void subListener(esp_mqtt_event_handle_t event) {
         || strncmp(message.ptr, "Door Opened!", message.len) == 0
         || strncmp(message.ptr, "Door opened!", message.len) == 0)
         && (intensity < 201 || !isChecked)) {
-            int colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-            setColor(colorNumber, 200);
-            vTaskDelay(10000);
-            if (isChecked) {
-                setColor(colorNumber, intensity);
+            // int colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+            // setColor(colorNumber, 200);
+            // vTaskDelay(10000);
+            // if (isChecked) {
+            //     setColor(colorNumber, intensity);
+            // } else {
+            //     setColor(0x00, 0x00);
+            // }
+            if (!timer) {
+                // timeTrigger();
+                xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, (void *)1, 1, NULL);
             } else {
-                setColor(0x00, 0x00);
+                timer = 20;
             }
         }
     }

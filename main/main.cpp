@@ -102,11 +102,13 @@ void subListener(esp_mqtt_event_handle_t event) {
     json_scanf(event->data, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
     if (payload.len == 0) {
         struct json_token t;
-        // for (int i = 0; json_scanf_array_elem(event->data, event->data_len, "", i, &t) > 0; i++) {
-        //     printf("Index %d, token [%.*s]\n", i, t.len, t.ptr);
-        json_scanf_array_elem(event->data, event->data_len, "", NULL, &t);
-        json_scanf(t.ptr, t.len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
-        // }
+        for (int i = 0; json_scanf_array_elem(event->data, event->data_len, "", i, &t) > 0; i++) {
+            json_scanf_array_elem(event->data, event->data_len, "", i, &t);
+            json_scanf(t.ptr, t.len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
+            if (strncmp(payloadType.ptr, "store", payloadType.len) == 0 && payload.len != 0) {
+                break;
+            }
+        }
     }
     json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %T, intensity: %T, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
 

@@ -39,7 +39,7 @@ static char* PacketFormat = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\"
 static char* PacketFormatIsChecked = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B}}}";
 static char* PacketFormatIntensity = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,intensity:%d}}}";
 static char* PacketFormatColor = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,color:\"%s\"}}}";
-static char* PacketFormatStore = "{essential:{publisherudi:self,targetSubscriber:[\"%s\"],mqttPacket:{qos:2, retain: true},payloadType:store,payload:{isChecked:%B,intensity:%d,color:\"%s\"}}}";
+static char* PacketFormatStore = "{essential:{publisherudi:self,targetSubscriber:[\"%s\"],mqttPacket:{qos:2, retain: %B},payloadType:store,payload:{isChecked:%B,intensity:%d,color:\"%s\"}}}";
 
 void setColor(uint32_t color, uint32_t intensity) {
     uint32_t red = (((0xFF0000 & color) >> 16) * intensity) / 255;
@@ -77,7 +77,7 @@ void mqttStore() {
     int ComposedPacketLength = 0;
     char buf[300] = "";
     struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
-    ComposedPacketLength = json_printf(&jOut, PacketFormatStore, deviceUdi, deviceIsChecked, deviceIntensity, deviceColor);
+    ComposedPacketLength = json_printf(&jOut, PacketFormatStore, deviceUdi, true, deviceIsChecked, deviceIntensity, deviceColor);
     mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
 }
 

@@ -33,6 +33,8 @@ static char deviceColor[9] = {'#', 'F', 'F', '0', 'A', 'A', '0', 'F', '3'};
 
 static Mqtt* mqttInstance = new Mqtt();
 
+static bool firstRun = true;
+
 static char* PacketFormat = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B,intensity:%d,color:\"%s\"}}}";
 static char* PacketFormatIsChecked = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B}}}";
 static char* PacketFormatIntensity = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,intensity:%d}}}";
@@ -71,44 +73,44 @@ void timeTrigger(void *) {
     vTaskSuspend(NULL);
 }
 
-// void mqttStore() {
-//     int ComposedPacketLength = 0;
-//     char buf[300] = "";
-//     struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
-//     ComposedPacketLength = json_printf(&jOut, PacketFormatStore, deviceUdi, deviceIsChecked, deviceIntensity, deviceColor);
-//     mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
-// }
+void mqttStore() {
+    int ComposedPacketLength = 0;
+    char buf[300] = "";
+    struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
+    ComposedPacketLength = json_printf(&jOut, PacketFormatStore, deviceUdi, deviceIsChecked, deviceIntensity, deviceColor);
+    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+}
 
 void subListener(esp_mqtt_event_handle_t event) {
-    static struct json_token publisherudi = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token payloadType = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token payload = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token message = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token details = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token color = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token isChecked = { NULL, 0, JSON_TYPE_INVALID };
-    static struct json_token intensity = { NULL, 0, JSON_TYPE_INVALID };
-    static int thingCode = 0;
-    static int doorSensor = 0;
-    static int motionSensor = 0;
-    static int value = 0;
-    static int paramUpdate = 0;
-    static int ComposedPacketLength = 0;
+    struct json_token publisherudi = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token payloadType = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token payload = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token message = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token details = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token color = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token isChecked = { NULL, 0, JSON_TYPE_INVALID };
+    struct json_token intensity = { NULL, 0, JSON_TYPE_INVALID };
+    int thingCode = 0;
+    int doorSensor = 0;
+    int motionSensor = 0;
+    int value = 0;
+    int paramUpdate = 0;
+    int ComposedPacketLength = 0;
 
     static bool entered = false;
 
     json_scanf(event->data, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
-    // if (payload.len == 0) {
-    //     struct json_token t;
-    //     // for (int i = 0; json_scanf_array_elem(event->data, event->data_len, "", i, &t) > 0; i++) {
-    //     //     printf("Index %d, token [%.*s]\n", i, t.len, t.ptr);
-    //     json_scanf_array_elem(event->data, event->data_len, "", NULL, &t);
-    //     json_scanf(t.ptr, t.len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
-    //     // }
-    // }
+    if (payload.len == 0) {
+        struct json_token t;
+        // for (int i = 0; json_scanf_array_elem(event->data, event->data_len, "", i, &t) > 0; i++) {
+        //     printf("Index %d, token [%.*s]\n", i, t.len, t.ptr);
+        json_scanf_array_elem(event->data, event->data_len, "", NULL, &t);
+        json_scanf(t.ptr, t.len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
+        // }
+    }
     json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %T, intensity: %T, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
 
-    if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0)) {
+    if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0) && payload.len != 0) {
         if (isChecked.len != 0) {
             isChecked.len == 4 ? deviceIsChecked = 1 : deviceIsChecked = 0;
             paramUpdate = 1;
@@ -131,9 +133,6 @@ void subListener(esp_mqtt_event_handle_t event) {
             }
         }
 
-        // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
-        printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %s\n", thingCode, deviceIsChecked, deviceIntensity, deviceColor);
-
         if (strncmp(payloadType.ptr, "command", payloadType.len) == 0) {
 
             char buf[300] = "";
@@ -151,18 +150,18 @@ void subListener(esp_mqtt_event_handle_t event) {
                 ComposedPacketLength = json_printf(&jOut, PacketFormatColor, deviceUdi, devicePayloadType, deviceThingCode, deviceColor);
                 mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
             }
-            // mqttStore();
+            if (!firstRun) mqttStore();
         }
     }
-    if (strncmp(payloadType.ptr, "settings", payloadType.len) == 0 && entered == false) {
-        entered = true;
-        static struct json_token alias = { NULL, 0, JSON_TYPE_INVALID };
-        json_scanf(payload.ptr, payload.len, "{ alias: %T }", &alias);
-        if (alias.len != 0) {
-            strncpy(deviceAlias, alias.ptr, alias.len);
-        }
-    }
-    if (strncmp(payloadType.ptr, "store", payloadType.len) == 0) {
+    // if (strncmp(payloadType.ptr, "settings", payloadType.len) == 0 && entered == false) {
+    //     entered = true;
+    //     static struct json_token alias = { NULL, 0, JSON_TYPE_INVALID };
+    //     json_scanf(payload.ptr, payload.len, "{ alias: %T }", &alias);
+    //     if (alias.len != 0) {
+    //         strncpy(deviceAlias, alias.ptr, alias.len);
+    //     }
+    // }
+    if (strncmp(payloadType.ptr, "store", payloadType.len) == 0 && payload.len != 0 && firstRun) {
         json_scanf(payload.ptr, payload.len, "{ isChecked: %T, intensity: %T, color: %T}", &isChecked, &intensity, &color);
         if (isChecked.len != 0) {
             isChecked.len == 4 ? deviceIsChecked = 1 : deviceIsChecked = 0;
@@ -181,12 +180,18 @@ void subListener(esp_mqtt_event_handle_t event) {
             setColor(0x00, 0x00);
         }
         
-        // char buf[300] = "";
-        // struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
-        // ComposedPacketLength = json_printf(&jOut, PacketFormat, deviceUdi, devicePayloadType, deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
-        // mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+        char buf[300] = "";
+        struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
+        ComposedPacketLength = json_printf(&jOut, PacketFormat, deviceUdi, devicePayloadType, deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
+        mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+
+        firstRun = false;
     }
-    if (strncmp(payloadType.ptr, "request", payloadType.len) == 0) {
+
+    // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
+    // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %s\n", thingCode, deviceIsChecked, deviceIntensity, deviceColor);
+    
+    if (strncmp(payloadType.ptr, "request", payloadType.len) == 0 && payload.len != 0) {
         bool state = false;
         json_scanf(payload.ptr, payload.len, "{ state: %B }", &state);
         if (state) {
@@ -233,4 +238,7 @@ extern "C" void app_main() {
     mqttInstance->Init();
     mqttInstance->Connect();
     *mqttInstance->Subscribe("RTSR&D/baanvak/sub/lightSwitch00001", 2) = subListener;
+
+    vTaskDelay(1000);
+    if (firstRun) esp_restart();
 }

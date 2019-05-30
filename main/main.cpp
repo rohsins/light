@@ -112,7 +112,7 @@ void subListener(esp_mqtt_event_handle_t event) {
     }
     json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %T, intensity: %T, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
 
-    if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0) && payload.len != 0) {
+    if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0) && payload.len != 0 && !firstRun) {
         if (isChecked.len != 0) {
             isChecked.len == 4 ? deviceIsChecked = 1 : deviceIsChecked = 0;
             paramUpdate = 1;
@@ -193,7 +193,7 @@ void subListener(esp_mqtt_event_handle_t event) {
     // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
     // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %s\n", thingCode, deviceIsChecked, deviceIntensity, deviceColor);
     
-    if (strncmp(payloadType.ptr, "request", payloadType.len) == 0 && payload.len != 0) {
+    if (strncmp(payloadType.ptr, "request", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
         bool state = false;
         json_scanf(payload.ptr, payload.len, "{ state: %B }", &state);
         if (state) {
@@ -205,7 +205,7 @@ void subListener(esp_mqtt_event_handle_t event) {
             mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
         }
     }
-    if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0 && payload.len != 0) {
+    if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
         json_scanf(details.ptr, details.len, "{ motionSensor: %d, doorSensor: %d, value: %d }", &motionSensor, &doorSensor, &value);
         if ((value == 1 || motionSensor == 1 || doorSensor == 1) && (deviceIntensity < 201 || !deviceIsChecked)) {
             if (!timer) {
@@ -241,6 +241,6 @@ extern "C" void app_main() {
     mqttInstance->Connect();
     *mqttInstance->Subscribe("RTSR&D/baanvak/sub/lightSwitch00001", 2) = subListener;
 
-    vTaskDelay(1000);
+    vTaskDelay(5000);
     if (firstRun) esp_restart();
 }

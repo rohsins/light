@@ -23,7 +23,7 @@ extern "C" {
 
 static const char *TAG = "lightSwitch";
 
-static const char * deviceUdi = "lightSwitch00008";
+static const char * deviceUdi = "lightSwitch00001";
 static const char * devicePayloadType = "commandReply";
 static const uint16_t deviceThingCode = 13001;
 static char deviceAlias[32];
@@ -78,7 +78,7 @@ void mqttStore() {
     char buf[300] = "";
     struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
     ComposedPacketLength = json_printf(&jOut, PacketFormatStore, deviceUdi, true, deviceIsChecked, deviceIntensity, deviceColor);
-    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00008", buf, ComposedPacketLength, 2, 0);
+    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
 }
 
 void subListener(esp_mqtt_event_handle_t event) {
@@ -99,7 +99,7 @@ void subListener(esp_mqtt_event_handle_t event) {
 
     static bool entered = false;
 
-    if (strncmp(event->topic, "RTSR&D/baanvak/sub/lightSwitch00008", event->topic_len) == 0) {
+    if (strncmp(event->topic, "RTSR&D/baanvak/sub/lightSwitch00001", event->topic_len) == 0) {
         json_scanf(event->data, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
         if (payload.len == 0) {
             struct json_token t;
@@ -143,15 +143,15 @@ void subListener(esp_mqtt_event_handle_t event) {
 
                 if (paramUpdate == 1) {
                     ComposedPacketLength = json_printf(&jOut, PacketFormatIsChecked, deviceUdi, devicePayloadType, deviceThingCode, deviceIsChecked);
-                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00008", buf, ComposedPacketLength, 2, 0);
+                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
                 }
                 if (paramUpdate == 2) {
                     ComposedPacketLength = json_printf(&jOut, PacketFormatIntensity, deviceUdi, devicePayloadType, deviceThingCode, deviceIntensity);
-                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00008", buf, ComposedPacketLength, 2, 0);
+                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
                 }
                 if (paramUpdate == 3) {
                     ComposedPacketLength = json_printf(&jOut, PacketFormatColor, deviceUdi, devicePayloadType, deviceThingCode, deviceColor);
-                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00008", buf, ComposedPacketLength, 2, 0);
+                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
                 }
                 if (!firstRun) mqttStore();
             }
@@ -186,7 +186,7 @@ void subListener(esp_mqtt_event_handle_t event) {
             char buf[300] = "";
             struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
             ComposedPacketLength = json_printf(&jOut, PacketFormat, deviceUdi, devicePayloadType, deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
-            mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00008", buf, ComposedPacketLength, 2, 0);
+            mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
 
             firstRun = false;
         }
@@ -203,7 +203,7 @@ void subListener(esp_mqtt_event_handle_t event) {
                 char buf[300] = "";
                 struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
                 ComposedPacketLength = json_printf(&jOut, PacketFormat2, deviceUdi, publisherudi.len, publisherudi.ptr, "response", deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
-                mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00008", buf, ComposedPacketLength, 2, 0);
+                mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
             }
         }
         if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
@@ -234,15 +234,16 @@ extern "C" void app_main() {
     nvs_flash_init();
 
     ws2812_control_init();
-
+    setColor(0x00, 0x00);
+    
     Wifi wifiInstance = Wifi();
     wifiInstance.Init();
     wifiInstance.Connect();
 
     mqttInstance->Init();
     mqttInstance->Connect();
-    *mqttInstance->Subscribe("RTSR&D/baanvak/sub/lightSwitch00008", 2) = subListener;
+    *mqttInstance->Subscribe("RTSR&D/baanvak/sub/lightSwitch00001", 2) = subListener;
 
-    vTaskDelay(5000);
+    vTaskDelay(10000);
     if (firstRun) esp_restart();
 }

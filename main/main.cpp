@@ -120,9 +120,13 @@ void subListener(esp_mqtt_event_handle_t event) {
             vTaskDelay(100);
             setColor(0x85a6c3, 0xFF);
             vTaskDelay(50);
-            int colorNumber = 0;
-            colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-            setColor(colorNumber, deviceIntensity);
+            if (deviceIsChecked) {
+                int colorNumber = 0;
+                colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                setColor(colorNumber, deviceIntensity);
+            } else {
+                setColor(0x00, 0x00);
+            }
         }
 
         if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0) && payload.len != 0 && !firstRun) {

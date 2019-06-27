@@ -101,7 +101,7 @@ void subListener(esp_mqtt_event_handle_t event) {
 
     if (strncmp(event->topic, "RTSR&D/baanvak/sub/lightSwitch00001", event->topic_len) == 0) {
         json_scanf(event->data, event->data_len, "{ publisherudi: %T, payloadType: %T, payload: %T }", &publisherudi, &payloadType, &payload);
-        if (payload.len == 0) {
+        if (payload.len == 0 && firstRun) {
             struct json_token t;
             for (int i = 0; json_scanf_array_elem(event->data, event->data_len, "", i, &t) > 0; i++) {
                 json_scanf_array_elem(event->data, event->data_len, "", i, &t);
@@ -112,6 +112,18 @@ void subListener(esp_mqtt_event_handle_t event) {
             }
         }
         json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %T, intensity: %T, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
+
+        if ((thingCode == 320) && (strncmp(payloadType.ptr, "alert", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
+            setColor(0x85a6c3, 0xFF);
+            vTaskDelay(50);
+            setColor(0x00, 0x00);
+            vTaskDelay(100);
+            setColor(0x85a6c3, 0xFF);
+            vTaskDelay(50);
+            int colorNumber = 0;
+            colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+            setColor(colorNumber, deviceIntensity);
+        }
 
         if ((thingCode == 12001) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0) && payload.len != 0 && !firstRun) {
             if (isChecked.len != 0) {
@@ -215,10 +227,10 @@ void subListener(esp_mqtt_event_handle_t event) {
                     timer = 20;
                 }
             }
-            if ((strncmp(message.ptr, "Motion Detected!", message.len) == 0
-            || strncmp(message.ptr, "Motion detected!", message.len) == 0
-            || strncmp(message.ptr, "Door Opened!", message.len) == 0
-            || strncmp(message.ptr, "Door opened!", message.len) == 0)
+            if ((strncmp(message.ptr, "Motion Detected!", 16) == 0
+            || strncmp(message.ptr, "Motion detected!", 16) == 0
+            || strncmp(message.ptr, "Door Opened!", 12) == 0
+            || strncmp(message.ptr, "Door opened!", 12) == 0)
             && (deviceIntensity < 201 || !deviceIsChecked)) {
                 if (!timer) {
                     xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
@@ -235,7 +247,7 @@ extern "C" void app_main() {
 
     ws2812_control_init();
     setColor(0x00, 0x00);
-    
+
     Wifi wifiInstance = Wifi();
     wifiInstance.Init();
     wifiInstance.Connect();

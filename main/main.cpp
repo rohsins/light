@@ -18,10 +18,12 @@
 
 #include "./frozen.h"
 extern "C" {
-    #include "./ws2812_control.h"
+    #include "./ws2812.h"
 }
 
 static const char *TAG = "lightSwitch";
+
+static const int lightPin = 13;
 
 static const char * deviceUdi = "lightSwitch00001";
 static const char * devicePayloadType = "commandReply";
@@ -45,11 +47,11 @@ void setColor(uint32_t color, uint32_t intensity) {
     uint32_t red = (((0xFF0000 & color) >> 16) * intensity) / 255;
     uint32_t green = (((0x00FF00 & color) >> 8) * intensity) / 255;
     uint32_t blue = ((0x0000FF & color) * intensity) / 255;
-    uint32_t grb = (green << 16 | red << 8 | blue);
-    struct led_state led_color = {
-        grb, grb, grb, grb, grb, grb, grb, grb, grb, grb, grb, grb, grb, grb, grb, grb
+    rgbVal rgb = makeRGBVal(red, green, blue);
+    rgbVal led_color[16] = {
+        rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb
     };
-    ws2812_write_leds(led_color);
+    ws2812_setColors(16, led_color);
 }
 
 static int timer = 0;
@@ -249,7 +251,7 @@ void subListener(esp_mqtt_event_handle_t event) {
 extern "C" void app_main() {
     nvs_flash_init();
 
-    ws2812_control_init();
+    ws2812_init(lightPin);
     setColor(0x00, 0x00);
 
     Wifi wifiInstance = Wifi();

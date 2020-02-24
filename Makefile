@@ -15,7 +15,7 @@ EXTRA_COMPONENT_DIRS += ../rLibrary/
 # LIBC_PATH := $(PROJECT_PATH)/build/libalgobsec.a
 # LIBM_PATH := $(PROJECT_PATH)/build/libalgobsec.a
 
-EXCLUDE_COMPONENTS := aws_iot bt coap cxx esp_https_ota jsmn json mdns libsodium ulp
+EXCLUDE_COMPONENTS := aws_iot bt coap cxx esp_https_ota jsmn libsodium ulp
 
 include $(IDF_PATH)/make/project.mk
 

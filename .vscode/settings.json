@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "ws2812_control.h": "c",
-        "xiosbase": "cpp",
-        "system_error": "cpp",
-        "exception": "cpp"
-    },
-    "C_Cpp.errorSquiggles": "Disabled"
-}

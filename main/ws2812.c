@@ -14,14 +14,14 @@
 #include <soc/dport_reg.h>
 #include <driver/gpio.h>
 #include <soc/gpio_sig_map.h>
-#include <esp_intr.h>
+#include <esp_intr_alloc.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <driver/rmt.h>
 
 #define ETS_RMT_CTRL_INUM	18
-#define ESP_RMT_CTRL_DISABLE	ESP_RMT_CTRL_DIABLE /* Typo in esp_intr.h */
+// #define ESP_RMT_CTRL_DISABLE	ESP_RMT_CTRL_DIABLE /* Typo in esp_intr.h */
 
 #define DIVIDER		4 /* Above 4, timings start to deviate*/
 #define DURATION	12.5 /* minimum time of a single RMT duration

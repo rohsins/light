@@ -55,25 +55,25 @@ void setColor(uint32_t color, uint32_t intensity) {
 }
 
 static int timer = 0;
-void timeTrigger(void *) {
-    if (timer == 0) {
-        timer = 20;
-        int colorNumber = (int)strtol("F0F0F0", NULL, 16);
-        setColor(colorNumber, 200);
-        while (timer > 0) {
-            // printf("waiting for timeout: %d\n", timer);
-            vTaskDelay(1000);
-            timer--;
-        }
-        if (deviceIsChecked) {
-            colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-            setColor(colorNumber, deviceIntensity);
-        } else {
-            setColor(0x00, 0x00);
-        }
-    }
-    vTaskSuspend(NULL);
-}
+// void timeTrigger(void *) {
+//     if (timer == 0) {
+//         timer = 20;
+//         int colorNumber = (int)strtol("F0F0F0", NULL, 16);
+//         setColor(colorNumber, 200);
+//         while (timer > 0) {
+//             // printf("waiting for timeout: %d\n", timer);
+//             vTaskDelay(1000);
+//             timer--;
+//         }
+//         if (deviceIsChecked) {
+//             colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+//             setColor(colorNumber, deviceIntensity);
+//         } else {
+//             setColor(0x00, 0x00);
+//         }
+//     }
+//     vTaskSuspend(NULL);
+// }
 
 void mqttStore() {
     int ComposedPacketLength = 0;
@@ -116,6 +116,22 @@ void subListener(esp_mqtt_event_handle_t event) {
         json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %T, intensity: %T, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
 
         if ((strncmp(payloadType.ptr, "alert", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
+            setColor(0xff0000, 0xFF);
+            vTaskDelay(50);
+            setColor(0x00, 0x00);
+            vTaskDelay(100);
+            setColor(0xff0000, 0xFF);
+            vTaskDelay(50);
+            if (deviceIsChecked) {
+                int colorNumber = 0;
+                colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                setColor(colorNumber, deviceIntensity);
+            } else {
+                setColor(0x00, 0x00);
+            }
+        }
+
+        if ((strncmp(payloadType.ptr, "info", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
             setColor(0x85a6c3, 0xFF);
             vTaskDelay(50);
             setColor(0x00, 0x00);
@@ -224,27 +240,27 @@ void subListener(esp_mqtt_event_handle_t event) {
                 mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00003", buf, ComposedPacketLength, 2, 0);
             }
         }
-        if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
-            json_scanf(details.ptr, details.len, "{ motionSensor: %d, doorSensor: %d, value: %d }", &motionSensor, &doorSensor, &value);
-            if ((value == 1 || motionSensor == 1 || doorSensor == 1) && (deviceIntensity < 201 || !deviceIsChecked)) {
-                if (!timer) {
-                    xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
-                } else {
-                    timer = 20;
-                }
-            }
-            if ((strncmp(message.ptr, "Motion Detected!", 16) == 0
-            || strncmp(message.ptr, "Motion detected!", 16) == 0
-            || strncmp(message.ptr, "Door Opened!", 12) == 0
-            || strncmp(message.ptr, "Door opened!", 12) == 0)
-            && (deviceIntensity < 201 || !deviceIsChecked)) {
-                if (!timer) {
-                    xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
-                } else {
-                    timer = 20;
-                }
-            }
-        }
+        // if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
+        //     json_scanf(details.ptr, details.len, "{ motionSensor: %d, doorSensor: %d, value: %d }", &motionSensor, &doorSensor, &value);
+        //     if ((value == 1 || motionSensor == 1 || doorSensor == 1) && (deviceIntensity < 201 || !deviceIsChecked)) {
+        //         if (!timer) {
+        //             xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
+        //         } else {
+        //             timer = 20;
+        //         }
+        //     }
+        //     if ((strncmp(message.ptr, "Motion Detected!", 16) == 0
+        //     || strncmp(message.ptr, "Motion detected!", 16) == 0
+        //     || strncmp(message.ptr, "Door Opened!", 12) == 0
+        //     || strncmp(message.ptr, "Door opened!", 12) == 0)
+        //     && (deviceIntensity < 201 || !deviceIsChecked)) {
+        //         if (!timer) {
+        //             xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
+        //         } else {
+        //             timer = 20;
+        //         }
+        //     }
+        // }
     }
 }
 

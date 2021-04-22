@@ -16,10 +16,9 @@
 #include "../../rLibrary/rMqtt/mqtt.h"
 #include "../../rLibrary/rWifi/wifi.h"
 
+#include "../../rLibrary/rLED/led_strip.h"
+
 #include "./frozen.h"
-extern "C" {
-    #include "./ws2812.h"
-}
 
 static const char *TAG = "lightSwitch";
 
@@ -35,6 +34,8 @@ static char deviceColor[9] = {'#', 'F', 'F', '0', 'A', 'A', '0', 'F', '3'};
 
 static Mqtt* mqttInstance = new Mqtt();
 
+led_strip_t * led;
+
 static bool firstRun = true;
 
 static char* PacketFormat = "{essential:{subscriberudi:\"%s\",payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B,intensity:%d,color:\"%s\"}}}";
@@ -47,11 +48,15 @@ void setColor(uint32_t color, uint32_t intensity) {
     uint32_t red = (((0xFF0000 & color) >> 16) * intensity) / 255;
     uint32_t green = (((0x00FF00 & color) >> 8) * intensity) / 255;
     uint32_t blue = ((0x0000FF & color) * intensity) / 255;
-    rgbVal rgb = makeRGBVal(red, green, blue);
-    rgbVal led_color[16] = {
-        rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb
-    };
-    ws2812_setColors(16, led_color);
+    // rgbVal rgb = makeRGBVal(red, green, blue);
+    // rgbVal led_color[16] = {
+    //     rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb
+    // };
+    // ws2812_setColors(16, led_color);
+    for (int i = 0; i < 16; i++) {
+        led->set_pixel(led, i, red, green, blue);
+    }
+    led->refresh(led, 100);
 }
 
 static int timer = 0;
@@ -121,6 +126,22 @@ void subListener(esp_mqtt_event_handle_t event) {
             setColor(0x00, 0x00);
             vTaskDelay(100);
             setColor(0xff0000, 0xFF);
+            vTaskDelay(50);
+            if (deviceIsChecked) {
+                int colorNumber = 0;
+                colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                setColor(colorNumber, deviceIntensity);
+            } else {
+                setColor(0x00, 0x00);
+            }
+        }
+
+        if ((strncmp(payloadType.ptr, "warning", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
+            setColor(0xd3c600, 0xFF);
+            vTaskDelay(50);
+            setColor(0x00, 0x00);
+            vTaskDelay(100);
+            setColor(0xd3c600, 0xFF);
             vTaskDelay(50);
             if (deviceIsChecked) {
                 int colorNumber = 0;
@@ -267,8 +288,8 @@ void subListener(esp_mqtt_event_handle_t event) {
 extern "C" void app_main() {
     nvs_flash_init();
 
-    ws2812_init(lightPin);
-    setColor(0x00, 0x00);
+    led = led_strip_init(lightPin, 16);
+    led->clear(led, 100);
 
     Wifi wifiInstance = Wifi();
     wifiInstance.Init();

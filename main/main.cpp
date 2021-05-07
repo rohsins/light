@@ -212,10 +212,13 @@ void subListener(esp_mqtt_event_handle_t event) {
                         mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
                     }
                     if (!firstRun) mqttStore();
+
+                    return;
                 }
             } else {
                 bool state = false;
                 json_scanf(payload.ptr, payload.len, "{ state: %B }", &state);
+                
                 if (state) {
                     static char* PacketFormat2 = "{essential:{subscriberudi:\"%s\",targetPublisher:[\"%.*s\"],payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B,intensity:%d,color:\"%s\"}}}";
                     int ComposedPacketLength = 0;
@@ -224,6 +227,7 @@ void subListener(esp_mqtt_event_handle_t event) {
                     ComposedPacketLength = json_printf(&jOut, PacketFormat2, deviceUdi, publisherudi.len, publisherudi.ptr, "response", deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
                     mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
                 }
+
                 return;
             }
             

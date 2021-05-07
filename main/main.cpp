@@ -13,10 +13,10 @@
 #include "driver/uart.h"
 #include "soc/uart_struct.h"
 
-#include "../../rLibrary/rMqtt/mqtt.h"
-#include "../../rLibrary/rWifi/wifi.h"
+#include "../../../rLibrary/rMqtt/mqtt.h"
+#include "../../../rLibrary/rWifi/wifi.h"
 
-#include "../../rLibrary/rLED/led_strip.h"
+#include "../../../rLibrary/rLED/led_strip.h"
 
 #include "./frozen.h"
 
@@ -48,37 +48,12 @@ void setColor(uint32_t color, uint32_t intensity) {
     uint32_t red = (((0xFF0000 & color) >> 16) * intensity) / 255;
     uint32_t green = (((0x00FF00 & color) >> 8) * intensity) / 255;
     uint32_t blue = ((0x0000FF & color) * intensity) / 255;
-    // rgbVal rgb = makeRGBVal(red, green, blue);
-    // rgbVal led_color[16] = {
-    //     rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb, rgb
-    // };
-    // ws2812_setColors(16, led_color);
+    
     for (int i = 0; i < 16; i++) {
         led->set_pixel(led, i, red, green, blue);
     }
     led->refresh(led, 100);
 }
-
-static int timer = 0;
-// void timeTrigger(void *) {
-//     if (timer == 0) {
-//         timer = 20;
-//         int colorNumber = (int)strtol("F0F0F0", NULL, 16);
-//         setColor(colorNumber, 200);
-//         while (timer > 0) {
-//             // printf("waiting for timeout: %d\n", timer);
-//             vTaskDelay(1000);
-//             timer--;
-//         }
-//         if (deviceIsChecked) {
-//             colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-//             setColor(colorNumber, deviceIntensity);
-//         } else {
-//             setColor(0x00, 0x00);
-//         }
-//     }
-//     vTaskSuspend(NULL);
-// }
 
 void mqttStore() {
     int ComposedPacketLength = 0;
@@ -120,105 +95,6 @@ void subListener(esp_mqtt_event_handle_t event) {
         }
         json_scanf(payload.ptr, payload.len, "{ thingCode: %d, message: %T, details: %T, isChecked: %T, intensity: %T, color: %T}", &thingCode, &message, &details, &isChecked, &intensity, &color);
 
-        if ((strncmp(payloadType.ptr, "alert", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
-            setColor(0xff0000, 0xFF);
-            vTaskDelay(50);
-            setColor(0x00, 0x00);
-            vTaskDelay(100);
-            setColor(0xff0000, 0xFF);
-            vTaskDelay(50);
-            if (deviceIsChecked) {
-                int colorNumber = 0;
-                colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-                setColor(colorNumber, deviceIntensity);
-            } else {
-                setColor(0x00, 0x00);
-            }
-        }
-
-        if ((strncmp(payloadType.ptr, "warning", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
-            setColor(0xd3c600, 0xFF);
-            vTaskDelay(50);
-            setColor(0x00, 0x00);
-            vTaskDelay(100);
-            setColor(0xd3c600, 0xFF);
-            vTaskDelay(50);
-            if (deviceIsChecked) {
-                int colorNumber = 0;
-                colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-                setColor(colorNumber, deviceIntensity);
-            } else {
-                setColor(0x00, 0x00);
-            }
-        }
-
-        if ((strncmp(payloadType.ptr, "info", payloadType.len) == 0) && payload.len != 0 && !firstRun) {
-            setColor(0x85a6c3, 0xFF);
-            vTaskDelay(50);
-            setColor(0x00, 0x00);
-            vTaskDelay(100);
-            setColor(0x85a6c3, 0xFF);
-            vTaskDelay(50);
-            if (deviceIsChecked) {
-                int colorNumber = 0;
-                colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-                setColor(colorNumber, deviceIntensity);
-            } else {
-                setColor(0x00, 0x00);
-            }
-        }
-
-        if (((thingCode == 13004) || (thingCode == 12001)) && (strncmp(payloadType.ptr, "request", payloadType.len) != 0) && payload.len != 0 && !firstRun) {
-            if (isChecked.len != 0) {
-                isChecked.len == 4 ? deviceIsChecked = 1 : deviceIsChecked = 0;
-                paramUpdate = 1;
-            }
-            if (intensity.len != 0) {
-                deviceIntensity = (int)strtol(intensity.ptr, NULL, 10);
-                paramUpdate = 2;
-            }
-            if (color.len != 0) {
-                memcpy(deviceColor, color.ptr, color.len);
-                paramUpdate = 3;
-            }
-            if (!timer) {
-                if (deviceIsChecked) {
-                    int colorNumber = 0;
-                    colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
-                    setColor(colorNumber, deviceIntensity);
-                } else {
-                    setColor(0x00, 0x00);
-                }
-            }
-
-            if (strncmp(payloadType.ptr, "command", payloadType.len) == 0) {
-
-                char buf[300] = "";
-                struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
-
-                if (paramUpdate == 1) {
-                    ComposedPacketLength = json_printf(&jOut, PacketFormatIsChecked, deviceUdi, devicePayloadType, deviceThingCode, deviceIsChecked);
-                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
-                }
-                if (paramUpdate == 2) {
-                    ComposedPacketLength = json_printf(&jOut, PacketFormatIntensity, deviceUdi, devicePayloadType, deviceThingCode, deviceIntensity);
-                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
-                }
-                if (paramUpdate == 3) {
-                    ComposedPacketLength = json_printf(&jOut, PacketFormatColor, deviceUdi, devicePayloadType, deviceThingCode, deviceColor);
-                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
-                }
-                if (!firstRun) mqttStore();
-            }
-        }
-        // if (strncmp(payloadType.ptr, "settings", payloadType.len) == 0 && entered == false) {
-        //     entered = true;
-        //     static struct json_token alias = { NULL, 0, JSON_TYPE_INVALID };
-        //     json_scanf(payload.ptr, payload.len, "{ alias: %T }", &alias);
-        //     if (alias.len != 0) {
-        //         strncpy(deviceAlias, alias.ptr, alias.len);
-        //     }
-        // }
         if (strncmp(payloadType.ptr, "store", payloadType.len) == 0 && payload.len != 0 && firstRun) {
             json_scanf(payload.ptr, payload.len, "{ isChecked: %T, intensity: %T, color: %T}", &isChecked, &intensity, &color);
             if (isChecked.len != 0) {
@@ -244,44 +120,126 @@ void subListener(esp_mqtt_event_handle_t event) {
             mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
 
             firstRun = false;
+
+            return;
         }
 
-        // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
-        // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %s\n", thingCode, deviceIsChecked, deviceIntensity, deviceColor);
-        
-        if (strncmp(payloadType.ptr, "request", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
-            bool state = false;
-            json_scanf(payload.ptr, payload.len, "{ state: %B }", &state);
-            if (state) {
-                static char* PacketFormat2 = "{essential:{subscriberudi:\"%s\",targetPublisher:[\"%.*s\"],payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B,intensity:%d,color:\"%s\"}}}";
-                int ComposedPacketLength = 0;
-                char buf[300] = "";
-                struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
-                ComposedPacketLength = json_printf(&jOut, PacketFormat2, deviceUdi, publisherudi.len, publisherudi.ptr, "response", deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
-                mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+        if (payload.len != 0 && !firstRun) {
+
+            if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0) {
+                setColor(0xff0000, 0xFF);
+                vTaskDelay(50);
+                setColor(0x00, 0x00);
+                vTaskDelay(100);
+                setColor(0xff0000, 0xFF);
+                vTaskDelay(50);
+                if (deviceIsChecked) {
+                    int colorNumber = 0;
+                    colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                    setColor(colorNumber, deviceIntensity);
+                } else {
+                    setColor(0x00, 0x00);
+                }
+                return;
             }
+
+            if (strncmp(payloadType.ptr, "warning", payloadType.len) == 0) {
+                setColor(0xd3c600, 0xFF);
+                vTaskDelay(50);
+                setColor(0x00, 0x00);
+                vTaskDelay(100);
+                setColor(0xd3c600, 0xFF);
+                vTaskDelay(50);
+                if (deviceIsChecked) {
+                    int colorNumber = 0;
+                    colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                    setColor(colorNumber, deviceIntensity);
+                } else {
+                    setColor(0x00, 0x00);
+                }
+                return;
+            }
+
+            if (strncmp(payloadType.ptr, "info", payloadType.len) == 0) {
+                setColor(0x85a6c3, 0xFF);
+                vTaskDelay(50);
+                setColor(0x00, 0x00);
+                vTaskDelay(100);
+                setColor(0x85a6c3, 0xFF);
+                vTaskDelay(50);
+                if (deviceIsChecked) {
+                    int colorNumber = 0;
+                    colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                    setColor(colorNumber, deviceIntensity);
+                } else {
+                    setColor(0x00, 0x00);
+                }
+                return;
+            }
+
+            if (strncmp(payloadType.ptr, "request", payloadType.len) != 0) {
+                if (isChecked.len != 0) {
+                    isChecked.len == 4 ? deviceIsChecked = 1 : deviceIsChecked = 0;
+                    paramUpdate = 1;
+                } else if (intensity.len != 0) {
+                    deviceIntensity = (int)strtol(intensity.ptr, NULL, 10);
+                    paramUpdate = 2;
+                } else if (color.len != 0) {
+                    memcpy(deviceColor, color.ptr, color.len);
+                    paramUpdate = 3;
+                }
+
+                if (deviceIsChecked) {
+                    int colorNumber = 0;
+                    colorNumber = (int)strtol(deviceColor + 3, NULL, 16);
+                    setColor(colorNumber, deviceIntensity);
+                } else {
+                    setColor(0x00, 0x00);
+                }
+
+                if (strncmp(payloadType.ptr, "command", payloadType.len) == 0) {
+                    char buf[300] = "";
+                    struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
+
+                    if (paramUpdate == 1) {
+                        ComposedPacketLength = json_printf(&jOut, PacketFormatIsChecked, deviceUdi, devicePayloadType, deviceThingCode, deviceIsChecked);
+                        mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+                    } else if (paramUpdate == 2) {
+                        ComposedPacketLength = json_printf(&jOut, PacketFormatIntensity, deviceUdi, devicePayloadType, deviceThingCode, deviceIntensity);
+                        mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+                    } else if (paramUpdate == 3) {
+                        ComposedPacketLength = json_printf(&jOut, PacketFormatColor, deviceUdi, devicePayloadType, deviceThingCode, deviceColor);
+                        mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+                    }
+                    if (!firstRun) mqttStore();
+                }
+            } else {
+                bool state = false;
+                json_scanf(payload.ptr, payload.len, "{ state: %B }", &state);
+                if (state) {
+                    static char* PacketFormat2 = "{essential:{subscriberudi:\"%s\",targetPublisher:[\"%.*s\"],payloadType:\"%s\",payload:{thingCode:%d,isChecked:%B,intensity:%d,color:\"%s\"}}}";
+                    int ComposedPacketLength = 0;
+                    char buf[300] = "";
+                    struct json_out jOut = JSON_OUT_BUF(buf, sizeof(buf));
+                    ComposedPacketLength = json_printf(&jOut, PacketFormat2, deviceUdi, publisherudi.len, publisherudi.ptr, "response", deviceThingCode, deviceIsChecked, deviceIntensity, deviceColor);
+                    mqttInstance->Publish("RTSR&D/baanvak/pub/lightSwitch00001", buf, ComposedPacketLength, 2, 0);
+                }
+                return;
+            }
+            
+            // if (strncmp(payloadType.ptr, "settings", payloadType.len) == 0 && entered == false) {
+            //     entered = true;
+            //     static struct json_token alias = { NULL, 0, JSON_TYPE_INVALID };
+            //     json_scanf(payload.ptr, payload.len, "{ alias: %T }", &alias);
+            //     if (alias.len != 0) {
+            //         strncpy(deviceAlias, alias.ptr, alias.len);
+            //     }
+            // }
+
+
+            // printf("publisherudi: %.*s\npayloadType: %.*s\npayload: %.*s\n", publisherudi.len, publisherudi.ptr, payloadType.len, payloadType.ptr, payload.len, payload.ptr);
+            // printf("thingCode: %d\nisChecked: %d\nintensity: %d\ncolor: %s\n", thingCode, deviceIsChecked, deviceIntensity, deviceColor);
         }
-        // if (strncmp(payloadType.ptr, "alert", payloadType.len) == 0 && payload.len != 0 && !firstRun) {
-        //     json_scanf(details.ptr, details.len, "{ motionSensor: %d, doorSensor: %d, value: %d }", &motionSensor, &doorSensor, &value);
-        //     if ((value == 1 || motionSensor == 1 || doorSensor == 1) && (deviceIntensity < 201 || !deviceIsChecked)) {
-        //         if (!timer) {
-        //             xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
-        //         } else {
-        //             timer = 20;
-        //         }
-        //     }
-        //     if ((strncmp(message.ptr, "Motion Detected!", 16) == 0
-        //     || strncmp(message.ptr, "Motion detected!", 16) == 0
-        //     || strncmp(message.ptr, "Door Opened!", 12) == 0
-        //     || strncmp(message.ptr, "Door opened!", 12) == 0)
-        //     && (deviceIntensity < 201 || !deviceIsChecked)) {
-        //         if (!timer) {
-        //             xTaskCreate(timeTrigger, (const char*)"timeTrigger Task", 2048, NULL, 1, NULL);
-        //         } else {
-        //             timer = 20;
-        //         }
-        //     }
-        // }
     }
 }
 

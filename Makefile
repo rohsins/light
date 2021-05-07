@@ -7,7 +7,7 @@
 # project subdirectory.
 #
 PROJECT_NAME := ProjectRemoteTest
-EXTRA_COMPONENT_DIRS += ../rLibrary/
+EXTRA_COMPONENT_DIRS += ../../rLibrary/
 
 # LIB_DIRS += $(dir $(LIB_DEPS))
 # LIB_DEPS += $(PROJECT_PATH)/build/libalgobsec.a
